@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "futu": {
+      "command": "uv",
+      "args": [
+        "run",
+        "futu-mcp-server"
+      ],
+      "cwd": "/absolute/path/to/futu-mcp",
+      "env": {
+        "FUTU_HOST": "127.0.0.1",
+        "FUTU_PORT": "11111",
+        "FUTU_CONNECTION_TIMEOUT": "30",
+        "FUTU_REQUEST_TIMEOUT": "60",
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+
