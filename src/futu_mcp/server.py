@@ -509,39 +509,6 @@ def get_static_info(stock_codes: list[str]) -> Dict[str, Any]:
 
 
 # Main entry point
-def create_app():
-    """Create ASGI application for HTTP transport.
-    
-    Returns:
-        ASGI application that can be run with uvicorn or other ASGI servers
-    """
-    from starlette.applications import Starlette
-    from starlette.responses import JSONResponse
-    from starlette.routing import Route, Mount
-    
-    # Get the MCP ASGI app from FastMCP
-    mcp_app = mcp.streamable_http_app
-    
-    # Health check endpoint
-    async def health_check(request):
-        """Health check endpoint for Docker and load balancers."""
-        return JSONResponse({
-            "status": "healthy",
-            "service": "futu-mcp-server",
-            "version": "0.1.0"
-        })
-    
-    # Create Starlette app with routes
-    app = Starlette(
-        routes=[
-            Route("/health", health_check, methods=["GET"]),
-            Mount("/mcp", mcp_app),
-        ]
-    )
-    
-    return app
-
-
 def main():
     """Run the Futu MCP server.
     
@@ -566,13 +533,12 @@ def main():
     
     if http_mode:
         logger.info(f"Running in HTTP mode on {config.server_host}:{config.server_port}")
-        logger.info("Health check endpoint: /health")
-        logger.info("MCP endpoint: /mcp")
+        logger.info(f"MCP endpoint: http://{config.server_host}:{config.server_port}/mcp")
         
-        # Run with uvicorn
+        # Run FastMCP's HTTP app with uvicorn
         import uvicorn
         uvicorn.run(
-            create_app(),
+            mcp.streamable_http_app(),
             host=config.server_host,
             port=config.server_port,
             log_level=config.log_level.lower()
