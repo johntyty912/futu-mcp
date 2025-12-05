@@ -2,6 +2,7 @@
 
 import logging
 from typing import Dict, Any
+import pandas as pd
 from ..futu_client import FutuClient
 from ..models import TradingDaysInput, StaticInfoInput
 
@@ -31,8 +32,16 @@ def get_trading_days(client: FutuClient, params: Dict[str, Any]) -> Dict[str, An
     )
     result = client.check_response(ret, data, "Failed to get trading days")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        trading_days = result.to_dict(orient='records')
+    elif isinstance(result, list):
+        trading_days = result
+    else:
+        trading_days = [result] if isinstance(result, dict) else str(result)
+    
     return {
-        "trading_days": result.to_dict(orient='records') if hasattr(result, 'to_dict') else list(result),
+        "trading_days": trading_days,
         "market": input_data.market.value,
         "start_date": input_data.start_date,
         "end_date": input_data.end_date
@@ -58,8 +67,16 @@ def get_static_info(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any
     )
     result = client.check_response(ret, data, "Failed to get static info")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        static_info = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        static_info = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "static_info": result.to_dict(orient='records'),
-        "count": len(result)
+        "static_info": static_info,
+        "count": count
     }
 

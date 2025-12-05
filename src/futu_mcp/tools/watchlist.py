@@ -2,6 +2,7 @@
 
 import logging
 from typing import Dict, Any
+import pandas as pd
 from futu import SetPriceReminderOp
 from ..futu_client import FutuClient
 from ..models import WatchlistInput, PriceReminderInput
@@ -28,9 +29,17 @@ def get_watchlist(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     )
     result = client.check_response(ret, data, "Failed to get watchlist")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        securities = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        securities = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "securities": result.to_dict(orient='records'),
-        "count": len(result),
+        "securities": securities,
+        "count": count,
         "group_name": input_data.group_name or "All"
     }
 

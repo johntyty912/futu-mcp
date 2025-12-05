@@ -2,6 +2,7 @@
 
 import logging
 from typing import Dict, Any
+import pandas as pd
 from futu import TrdEnv, ModifyOrderOp
 from ..futu_client import FutuClient
 from ..models import (
@@ -36,31 +37,50 @@ def place_order(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     # Convert enums
     trd_side = client.convert_trd_side(input_data.trd_side)
     order_type = client.convert_order_type(input_data.order_type)
-    trd_market = client.convert_trd_market(input_data.trd_market)
     trd_env = TrdEnv.REAL if input_data.trd_env == "REAL" else TrdEnv.SIMULATE
     
     # Validate price for limit orders
     if input_data.order_type in ["NORMAL", "STOP_LIMIT", "LIMIT_IF_TOUCHED"] and input_data.price is None:
         raise ValueError(f"{input_data.order_type} orders require a price")
     
+    # Prepare order parameters
+    order_params = {
+        "price": input_data.price or 0,
+        "qty": input_data.qty,
+        "code": input_data.stock_code,
+        "trd_side": trd_side,
+        "order_type": order_type,
+        "trd_env": trd_env,
+    }
+    
+    # Only add trd_market if provided
+    if input_data.trd_market is not None:
+        order_params["trd_market"] = client.convert_trd_market(input_data.trd_market)
+    
+    # Add remark if provided
+    if input_data.remark:
+        order_params["remark"] = input_data.remark
+    
     # Place order
-    ret, data = client.trade_ctx.place_order(
-        price=input_data.price or 0,
-        qty=input_data.qty,
-        code=input_data.stock_code,
-        trd_side=trd_side,
-        order_type=order_type,
-        trd_env=trd_env,
-        trd_market=trd_market,
-        remark=input_data.remark
-    )
+    ret, data = client.trade_ctx.place_order(**order_params)
     result = client.check_response(ret, data, "Failed to place order")
     
     logger.info(f"Order placed: {input_data.stock_code} {input_data.trd_side} {input_data.qty} @ {input_data.price}")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        order_details = result.to_dict(orient='records')[0]
+        order_id = result['order_id'][0] if 'order_id' in result else None
+    elif isinstance(result, dict):
+        order_details = result
+        order_id = result.get('order_id')
+    else:
+        order_details = str(result)
+        order_id = None
+    
     return {
-        "order_id": result['order_id'][0] if 'order_id' in result else None,
-        "order_details": result.to_dict(orient='records')[0] if hasattr(result, 'to_dict') else str(result),
+        "order_id": order_id,
+        "order_details": order_details,
         "environment": input_data.trd_env
     }
 
@@ -103,10 +123,18 @@ def modify_order(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     
     logger.info(f"Order modified: {input_data.order_id} - {input_data.modify_op}")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        result_data = result.to_dict(orient='records')[0]
+    elif isinstance(result, dict):
+        result_data = result
+    else:
+        result_data = str(result)
+    
     return {
         "order_id": input_data.order_id,
         "operation": input_data.modify_op,
-        "result": result.to_dict(orient='records')[0] if hasattr(result, 'to_dict') else str(result)
+        "result": result_data
     }
 
 
@@ -154,10 +182,18 @@ def cancel_all_orders(client: FutuClient, params: Dict[str, Any]) -> Dict[str, A
     
     logger.info(f"All orders cancelled in {trd_env}")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        details = result.to_dict(orient='records')
+    elif isinstance(result, dict):
+        details = [result]
+    else:
+        details = str(result)
+    
     return {
         "message": "All orders cancelled successfully",
         "environment": trd_env,
-        "details": result.to_dict(orient='records') if hasattr(result, 'to_dict') else str(result)
+        "details": details
     }
 
 
@@ -188,9 +224,17 @@ def get_order_list(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]
     )
     result = client.check_response(ret, data, "Failed to get order list")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        orders = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        orders = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "orders": result.to_dict(orient='records'),
-        "count": len(result),
+        "orders": orders,
+        "count": count,
         "environment": input_data.trd_env
     }
 
@@ -221,9 +265,17 @@ def get_deal_list(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     )
     result = client.check_response(ret, data, "Failed to get deal list")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        deals = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        deals = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "deals": result.to_dict(orient='records'),
-        "count": len(result),
+        "deals": deals,
+        "count": count,
         "environment": input_data.trd_env
     }
 
@@ -254,9 +306,17 @@ def get_history_deal_list(client: FutuClient, params: Dict[str, Any]) -> Dict[st
     )
     result = client.check_response(ret, data, "Failed to get history deal list")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        deals = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        deals = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "deals": result.to_dict(orient='records'),
-        "count": len(result),
+        "deals": deals,
+        "count": count,
         "start_time": input_data.start_time,
         "end_time": input_data.end_time,
         "environment": input_data.trd_env
@@ -293,9 +353,17 @@ def get_max_trd_qtys(client: FutuClient, params: Dict[str, Any]) -> Dict[str, An
     )
     result = client.check_response(ret, data, "Failed to get max tradable quantities")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        max_quantities = result.to_dict(orient='records')[0]
+    elif isinstance(result, dict):
+        max_quantities = result
+    else:
+        max_quantities = str(result)
+    
     return {
         "stock_code": input_data.stock_code,
-        "max_quantities": result.to_dict(orient='records')[0] if hasattr(result, 'to_dict') else str(result),
+        "max_quantities": max_quantities,
         "environment": input_data.trd_env
     }
 

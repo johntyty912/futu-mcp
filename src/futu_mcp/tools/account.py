@@ -2,6 +2,7 @@
 
 import logging
 from typing import Dict, Any
+import pandas as pd
 from futu import TrdEnv
 from ..futu_client import FutuClient
 from ..models import AccountInfoInput, PositionListInput, CashFlowInput
@@ -33,9 +34,17 @@ def get_account_info(client: FutuClient, params: Dict[str, Any]) -> Dict[str, An
     )
     result = client.check_response(ret, data, "Failed to get account info")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        account_info = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        account_info = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "account_info": result.to_dict(orient='records'),
-        "count": len(result),
+        "account_info": account_info,
+        "count": count,
         "environment": input_data.trd_env
     }
 
@@ -64,9 +73,17 @@ def get_positions(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     )
     result = client.check_response(ret, data, "Failed to get position list")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        positions = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        positions = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "positions": result.to_dict(orient='records'),
-        "count": len(result),
+        "positions": positions,
+        "count": count,
         "environment": input_data.trd_env
     }
 
@@ -97,9 +114,17 @@ def get_cash_flow(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     )
     result = client.check_response(ret, data, "Failed to get cash flow")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        cash_flows = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        cash_flows = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "cash_flows": result.to_dict(orient='records'),
-        "count": len(result),
+        "cash_flows": cash_flows,
+        "count": count,
         "start_date": input_data.start_date,
         "end_date": input_data.end_date,
         "environment": input_data.trd_env

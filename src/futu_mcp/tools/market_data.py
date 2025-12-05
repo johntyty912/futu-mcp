@@ -2,6 +2,7 @@
 
 import logging
 from typing import Dict, Any
+import pandas as pd
 from ..futu_client import FutuClient
 from ..models import (
     StockQuoteInput,
@@ -36,10 +37,17 @@ def get_stock_quote(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any
     ret, data = client.quote_ctx.get_stock_quote(input_data.stock_codes)
     result = client.check_response(ret, data, "Failed to get stock quotes")
     
-    # Convert DataFrame to dict
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        quotes = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        quotes = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "quotes": result.to_dict(orient='records'),
-        "count": len(result)
+        "quotes": quotes,
+        "count": count
     }
 
 
@@ -71,9 +79,17 @@ def get_historical_kline(client: FutuClient, params: Dict[str, Any]) -> Dict[str
     )
     result = client.check_response(ret, data, "Failed to get historical K-line")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        klines = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        klines = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "klines": result.to_dict(orient='records'),
-        "count": len(result),
+        "klines": klines,
+        "count": count,
         "page_req_key": page_req_key
     }
 
@@ -99,9 +115,17 @@ def get_market_snapshot(client: FutuClient, params: Dict[str, Any]) -> Dict[str,
     ret, data = client.quote_ctx.get_market_snapshot(input_data.stock_codes)
     result = client.check_response(ret, data, "Failed to get market snapshot")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        snapshots = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        snapshots = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "snapshots": result.to_dict(orient='records'),
-        "count": len(result)
+        "snapshots": snapshots,
+        "count": count
     }
 
 
@@ -126,10 +150,17 @@ def get_order_book(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]
     ret, data = client.quote_ctx.get_order_book(input_data.stock_code)
     result = client.check_response(ret, data, "Failed to get order book")
     
-    # Parse order book data
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        order_book = result.to_dict(orient='records')
+    elif isinstance(result, dict):
+        order_book = result
+    else:
+        order_book = str(result)
+    
     return {
         "stock_code": input_data.stock_code,
-        "order_book": result.to_dict(orient='records') if hasattr(result, 'to_dict') else str(result)
+        "order_book": order_book
     }
 
 
@@ -157,9 +188,17 @@ def get_rt_ticker(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     )
     result = client.check_response(ret, data, "Failed to get real-time ticker")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        tickers = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        tickers = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "tickers": result.to_dict(orient='records'),
-        "count": len(result)
+        "tickers": tickers,
+        "count": count
     }
 
 
@@ -184,9 +223,17 @@ def get_option_chain(client: FutuClient, params: Dict[str, Any]) -> Dict[str, An
     )
     result = client.check_response(ret, data, "Failed to get option chain")
     
+    # Handle DataFrame response
+    if isinstance(result, pd.DataFrame):
+        options = result.to_dict(orient='records')
+        count = len(result)
+    else:
+        options = [result] if isinstance(result, dict) else str(result)
+        count = 1
+    
     return {
-        "options": result.to_dict(orient='records'),
-        "count": len(result),
+        "options": options,
+        "count": count,
         "underlying": input_data.stock_code
     }
 
@@ -207,8 +254,22 @@ def get_market_state(client: FutuClient, params: Dict[str, Any]) -> Dict[str, An
     ret, data = client.quote_ctx.get_global_state()
     result = client.check_response(ret, data, "Failed to get market state")
     
+    # Handle different return types
+    if isinstance(result, pd.DataFrame):
+        market_states = result.to_dict(orient='records')
+        count = len(result)
+    elif isinstance(result, dict):
+        market_states = [result]
+        count = 1
+    elif isinstance(result, list):
+        market_states = result
+        count = len(result)
+    else:
+        market_states = str(result)
+        count = 1
+    
     return {
-        "market_states": result.to_dict(orient='records'),
-        "count": len(result)
+        "market_states": market_states,
+        "count": count
     }
 
