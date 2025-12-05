@@ -23,6 +23,11 @@ class FutuConfig(BaseSettings):
     # Market data settings
     max_subscription_quota: int = Field(default=500, description="Maximum subscription quota")
     
+    # Server settings (for HTTP mode)
+    server_host: str = Field(default="0.0.0.0", description="Server bind address for HTTP mode")
+    server_port: int = Field(default=8000, description="Server port for HTTP mode")
+    server_mode: str = Field(default="stdio", description="Server mode: stdio or http")
+    
     # Logging settings
     log_level: str = Field(default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR)")
     

@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  futu-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: futu-mcp:latest
+    container_name: futu-mcp-server
+    
+    # Use host networking for easy FutuOpenD access
+    # Alternative: use bridge mode with extra_hosts (see commented section below)
+    network_mode: "host"
+    
+    # Environment variables
+    environment:
+      # FutuOpenD connection (use localhost with host networking)
+      - FUTU_HOST=127.0.0.1
+      - FUTU_PORT=11111
+      
+      # Trading password (optional, for real trading)
+      # - FUTU_TRADE_PWD=your_password_here
+      
+      # Server configuration
+      - SERVER_MODE=http
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      
+      # Logging
+      - LOG_LEVEL=INFO
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check (redundant with Dockerfile HEALTHCHECK, but useful for docker-compose)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+# Alternative configuration using bridge networking
+# Uncomment this section and comment out the service above if you prefer bridge mode
+#
+# services:
+#   futu-mcp:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     image: futu-mcp:latest
+#     container_name: futu-mcp-server
+#     
+#     ports:
+#       - "8000:8000"
+#     
+#     # Allow container to access host services
+#     extra_hosts:
+#       - "host.docker.internal:host-gateway"
+#     
+#     environment:
+#       # FutuOpenD connection (use host.docker.internal with bridge networking)
+#       - FUTU_HOST=host.docker.internal
+#       - FUTU_PORT=11111
+#       - SERVER_MODE=http
+#       - SERVER_HOST=0.0.0.0
+#       - SERVER_PORT=8000
+#       - LOG_LEVEL=INFO
+#     
+#     restart: unless-stopped
+#     
+#     healthcheck:
+#       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 3
+#       start_period: 5s

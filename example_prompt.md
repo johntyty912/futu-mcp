@@ -1,0 +1,1 @@
+用futu-mcp，sequential-thinking, perplexity，幫我分析我既profolio，持倉等，如果有足夠資金，幫我找找profitable既操作，決定今晚做咩操作，trd_env用REAL，US MARKET可以用get options price，不要用get stock price。

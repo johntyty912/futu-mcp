@@ -113,6 +113,8 @@ FUTU_MAX_SUBSCRIPTION_QUOTA=500
 
 ### Running the MCP Server
 
+#### Stdio Mode (Default - for local MCP clients)
+
 ```bash
 # Using uv
 uv run futu-mcp-server
@@ -120,6 +122,59 @@ uv run futu-mcp-server
 # Or directly with Python
 python -m futu_mcp.server
 ```
+
+#### HTTP Mode (for Antigravity and remote access)
+
+```bash
+# Using command line flag
+uv run futu-mcp-server --http
+
+# Or set environment variable
+SERVER_MODE=http uv run futu-mcp-server
+```
+
+The HTTP server will start on `http://0.0.0.0:8000` with:
+- **Health check endpoint**: `http://localhost:8000/health`
+- **MCP endpoint**: `http://localhost:8000/mcp`
+
+### Docker Deployment
+
+#### Quick Start with Docker Compose
+
+```bash
+# Build and start the server
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f futu-mcp
+
+# Stop the server
+docker-compose down
+```
+
+#### Manual Docker Build and Run
+
+```bash
+# Build the image
+docker build -t futu-mcp:latest .
+
+# Run with host networking (easiest for FutuOpenD access)
+docker run -d \
+  --name futu-mcp-server \
+  --network host \
+  -e FUTU_HOST=127.0.0.1 \
+  -e FUTU_PORT=11111 \
+  futu-mcp:latest
+
+# Check health
+curl http://localhost:8000/health
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment guides including production setup with HTTPS.
+
 
 ### MCP Client Configuration
 
@@ -162,6 +217,31 @@ Add to your `claude_desktop_config.json`:
   }
 }
 ```
+
+#### For Antigravity
+
+Add to your Antigravity `mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "futu": {
+      "url": "http://localhost:8000/mcp",
+      "transport": "http"
+    }
+  }
+}
+```
+
+**Note**: The server must be running in HTTP mode for Antigravity. Start it with:
+```bash
+uv run futu-mcp-server --http
+# or
+docker-compose up -d
+```
+
+See [antigravity-config.json](antigravity-config.json) for the complete example configuration.
+
 
 ## Example Queries
 
