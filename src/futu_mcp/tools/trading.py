@@ -214,14 +214,23 @@ def get_order_list(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]
     client.ensure_trade_connected()
     
     trd_env = TrdEnv.REAL if input_data.trd_env == "REAL" else TrdEnv.SIMULATE
-    trd_market = client.convert_trd_market(input_data.trd_market)
     
     # Get order list
-    ret, data = client.trade_ctx.order_list_query(
-        trd_env=trd_env,
-        trd_market=trd_market,
-        status_filter_list=input_data.status_filter
-    )
+    # Note: order_list_query does not accept trd_market parameter.
+    # Market filtering is done when creating OpenSecTradeContext via filter_trdmarket.
+    # If needed, use order_market parameter for additional filtering (optional).
+    query_params = {
+        "trd_env": trd_env,
+        "status_filter_list": input_data.status_filter or []
+    }
+    
+    # Only add order_market if trd_market is specified (optional filter)
+    if input_data.trd_market is not None:
+        order_market = client.convert_trd_market(input_data.trd_market)
+        if order_market is not None:
+            query_params["order_market"] = order_market
+    
+    ret, data = client.trade_ctx.order_list_query(**query_params)
     result = client.check_response(ret, data, "Failed to get order list")
     
     # Handle DataFrame response
@@ -326,6 +335,10 @@ def get_history_deal_list(client: FutuClient, params: Dict[str, Any]) -> Dict[st
 def get_max_trd_qtys(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     """Get maximum tradable quantities.
     
+    Note: acctradinginfo_query does not accept trd_side parameter.
+    The response contains separate fields for buy and sell max quantities.
+    This function returns all max quantities and indicates which to use based on trd_side.
+    
     Args:
         client: Futu client instance
         params: Query parameters
@@ -340,15 +353,13 @@ def get_max_trd_qtys(client: FutuClient, params: Dict[str, Any]) -> Dict[str, An
     client.ensure_trade_connected()
     
     trd_env = TrdEnv.REAL if input_data.trd_env == "REAL" else TrdEnv.SIMULATE
-    trd_side = client.convert_trd_side(input_data.trd_side)
     order_type = client.convert_order_type(input_data.order_type)
     
-    # Get max tradable quantities
+    # Get max tradable quantities - note: no trd_side parameter
     ret, data = client.trade_ctx.acctradinginfo_query(
         order_type=order_type,
         code=input_data.stock_code,
         price=input_data.price or 0,
-        trd_side=trd_side,
         trd_env=trd_env
     )
     result = client.check_response(ret, data, "Failed to get max tradable quantities")
@@ -361,9 +372,22 @@ def get_max_trd_qtys(client: FutuClient, params: Dict[str, Any]) -> Dict[str, An
     else:
         max_quantities = str(result)
     
+    # Extract relevant max quantity based on trd_side
+    # The response contains fields like max_cash_buy, max_sell, etc.
+    relevant_max_qty = None
+    if isinstance(max_quantities, dict):
+        if input_data.trd_side == "BUY":
+            # Prefer max_cash_and_margin_buy, fallback to max_cash_buy
+            relevant_max_qty = max_quantities.get('max_cash_and_margin_buy') or max_quantities.get('max_cash_buy')
+        elif input_data.trd_side == "SELL":
+            # Prefer max_position_sell, fallback to max_sell
+            relevant_max_qty = max_quantities.get('max_position_sell') or max_quantities.get('max_sell')
+    
     return {
         "stock_code": input_data.stock_code,
+        "trd_side": input_data.trd_side,
         "max_quantities": max_quantities,
+        "relevant_max_qty": relevant_max_qty,  # Max qty for the specified trd_side
         "environment": input_data.trd_env
     }
 

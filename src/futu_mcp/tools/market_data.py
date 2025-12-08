@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 def get_stock_quote(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     """Get real-time stock quotes.
     
+    Note: Some markets (e.g., US stocks) may require account permissions/subscriptions.
+    Permission errors will be clearly indicated in the error message.
+    
     Args:
         client: Futu client instance
         params: Parameters containing stock_codes
@@ -31,7 +34,26 @@ def get_stock_quote(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any
     
     # Subscribe to quotes first
     ret, data = client.quote_ctx.subscribe(input_data.stock_codes, ['QUOTE'])
-    client.check_response(ret, data, "Failed to subscribe to quotes")
+    
+    # Check for permission errors and provide helpful message
+    if ret != 0:  # Not RET_OK
+        error_msg = str(data)
+        # Check if it's a permission error (Chinese error message about permissions)
+        if "权限" in error_msg or "permission" in error_msg.lower() or "无权限" in error_msg:
+            market_hint = ""
+            if any(code.startswith("US.") for code in input_data.stock_codes):
+                market_hint = " US market quote permissions may need to be enabled in your Futu account settings."
+            elif any(code.startswith("HK.") for code in input_data.stock_codes):
+                market_hint = " HK market quote permissions may need to be enabled in your Futu account settings."
+            
+            raise client.check_response(
+                ret, 
+                data, 
+                f"Failed to subscribe to quotes (permission error): {error_msg}.{market_hint} "
+                f"Please check your account's market data subscription/permissions in Futu account settings."
+            )
+        else:
+            client.check_response(ret, data, "Failed to subscribe to quotes")
     
     # Get quote data
     ret, data = client.quote_ctx.get_stock_quote(input_data.stock_codes)
