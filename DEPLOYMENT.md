@@ -1,14 +1,14 @@
 # Deployment Guide for Futu MCP Server
 
-This guide covers deploying the Futu MCP Server in HTTP mode for use with Antigravity and other remote MCP clients.
+This guide covers deploying the Futu MCP Server, which runs in stdio mode (standard input/output) for communication with MCP clients.
 
 ## Prerequisites
 
 1. **FutuOpenD** running on your machine (localhost:11111)
-2. **Docker** installed (for containerized deployment)
-3. **Python 3.12+** (for local deployment)
+2. **Python 3.12+** installed
+3. **uv** package manager (recommended) or pip
 
-## Local HTTP Deployment
+## Local Deployment
 
 ### 1. Install Dependencies
 
@@ -26,342 +26,178 @@ Create or update your `.env` file:
 FUTU_HOST=127.0.0.1
 FUTU_PORT=11111
 
-# Server Configuration
-SERVER_MODE=http
-SERVER_HOST=0.0.0.0
-SERVER_PORT=8000
-
-# Optional: Trading Password
+# Optional: Trading Password (for real trading)
 # FUTU_TRADE_PWD=your_password
+
+# Optional: Timeouts
+FUTU_CONNECTION_TIMEOUT=30
+FUTU_REQUEST_TIMEOUT=60
+
+# Optional: Logging
+LOG_LEVEL=INFO
 ```
 
-### 3. Run the Server
+### 3. Test the Server
 
 ```bash
-# Option 1: Using command line flag
-uv run futu-mcp-server --http
+# Test that the server starts correctly
+uv run futu-mcp-server
 
-# Option 2: Using environment variable
-SERVER_MODE=http uv run futu-mcp-server
+# Or directly with Python
+python -m futu_mcp.server
 ```
 
-The server will start on `http://0.0.0.0:8000` with:
-- Health check: `http://localhost:8000/health`
-- MCP endpoint: `http://localhost:8000/mcp`
+The server will start in stdio mode and wait for MCP requests. It's typically launched automatically by MCP clients (Cursor, Claude Desktop, etc.).
 
-## Docker Deployment
+## MCP Client Configuration
 
-### 1. Build the Docker Image
+The server is configured in your MCP client's configuration file. See the main [README.md](README.md) for client-specific configuration examples.
 
-```bash
-cd /path/to/futu-mcp
-docker build -t futu-mcp:latest .
-```
+### For Cursor IDE
 
-### 2. Run with Docker Compose (Recommended)
+Add to `~/.cursor/mcp.json`:
 
-```bash
-# Start the server
-docker-compose up -d
-
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs -f futu-mcp
-
-# Stop the server
-docker-compose down
-```
-
-### 3. Run with Docker CLI
-
-**Option A: Host Networking (Easiest)**
-
-```bash
-docker run -d \
-  --name futu-mcp-server \
-  --network host \
-  -e FUTU_HOST=127.0.0.1 \
-  -e FUTU_PORT=11111 \
-  -e SERVER_MODE=http \
-  futu-mcp:latest
-```
-
-**Option B: Bridge Networking**
-
-```bash
-docker run -d \
-  --name futu-mcp-server \
-  -p 8000:8000 \
-  --add-host host.docker.internal:host-gateway \
-  -e FUTU_HOST=host.docker.internal \
-  -e FUTU_PORT=11111 \
-  -e SERVER_MODE=http \
-  futu-mcp:latest
-```
-
-### 4. Verify Docker Deployment
-
-```bash
-# Check health
-curl http://localhost:8000/health
-
-# Check logs
-docker logs futu-mcp-server
-
-# Test MCP endpoint
-curl -X POST http://localhost:8000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
-```
-
-## Antigravity Integration
-
-### 1. Configure Antigravity
-
-Add the Futu MCP server to your Antigravity `mcp_config.json`:
-
-**For local deployment:**
 ```json
 {
   "mcpServers": {
     "futu": {
-      "url": "http://localhost:8000/mcp",
-      "transport": "http"
+      "command": "uv",
+      "args": ["run", "futu-mcp-server"],
+      "cwd": "/absolute/path/to/futu-mcp",
+      "env": {
+        "FUTU_HOST": "127.0.0.1",
+        "FUTU_PORT": "11111"
+      }
     }
   }
 }
 ```
 
-**For Docker deployment on same machine:**
+### For Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
 ```json
 {
   "mcpServers": {
     "futu": {
-      "url": "http://localhost:8000/mcp",
-      "transport": "http"
+      "command": "uv",
+      "args": ["run", "futu-mcp-server"],
+      "cwd": "/absolute/path/to/futu-mcp",
+      "env": {
+        "FUTU_HOST": "127.0.0.1",
+        "FUTU_PORT": "11111"
+      }
     }
   }
 }
 ```
 
-**For remote deployment:**
+## Remote FutuOpenD
+
+If FutuOpenD is running on a remote server:
+
 ```json
-{
-  "mcpServers": {
-    "futu": {
-      "url": "https://your-server.com/mcp",
-      "transport": "http"
-    }
-  }
+"env": {
+  "FUTU_HOST": "192.168.1.100",  // Remote server IP
+  "FUTU_PORT": "11111",
+  "FUTU_CONNECTION_TIMEOUT": "60"  // Increase for remote connections
 }
 ```
 
-### 2. Restart Antigravity
+**Security Note**: Ensure secure network connection when using remote FutuOpenD.
 
-After updating the configuration, restart Antigravity to load the new MCP server.
-
-### 3. Verify Integration
-
-In Antigravity, you should see 24 Futu tools available:
-- 8 Market Data tools
-- 9 Trading tools
-- 3 Account Management tools
-- 2 Watchlist & Alerts tools
-- 2 Market Info tools
-
-## Production Deployment with HTTPS
-
-For production use, it's recommended to run the server behind a reverse proxy with SSL/TLS.
-
-### Nginx Reverse Proxy Example
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name your-server.com;
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location /mcp {
-        proxy_pass http://localhost:8000/mcp;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /health {
-        proxy_pass http://localhost:8000/health;
-    }
-}
-```
-
-## Environment Variables Reference
+## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `FUTU_HOST` | `127.0.0.1` | FutuOpenD host address |
 | `FUTU_PORT` | `11111` | FutuOpenD port number |
-| `FUTU_TRADE_PWD` | - | Trading password (required for real trading) |
+| `FUTU_TRADE_PWD` | `None` | Trading password (required for real trading) |
 | `FUTU_CONNECTION_TIMEOUT` | `30` | Connection timeout in seconds |
 | `FUTU_REQUEST_TIMEOUT` | `60` | Request timeout in seconds |
-| `FUTU_MAX_SUBSCRIPTION_QUOTA` | `500` | Maximum subscription quota |
-| `SERVER_MODE` | `stdio` | Server mode: `stdio` or `http` |
-| `SERVER_HOST` | `0.0.0.0` | Server bind address |
-| `SERVER_PORT` | `8000` | Server port |
-| `LOG_LEVEL` | `INFO` | Logging level |
+| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
 
 ## Troubleshooting
 
-### Server won't start in HTTP mode
+### Server won't start
 
-**Error**: `ModuleNotFoundError: No module named 'uvicorn'`
+**Error**: `ModuleNotFoundError` or import errors
 
-**Solution**: Install dependencies
-```bash
-uv sync
+**Solutions**:
+- Ensure dependencies are installed: `uv sync`
+- Verify Python version: `python --version` (should be 3.12+)
+- Check virtual environment is activated
+
+### Connection Failed
+
+**Error**: `FutuConnectionError: Failed to connect to FutuOpenD`
+
+**Solutions**:
+- Ensure FutuOpenD is running
+- Verify `FUTU_HOST` and `FUTU_PORT` in environment variables
+- Check firewall settings
+- For remote FutuOpenD, verify network connectivity
+
+### Permission Denied
+
+**Error**: Permission denied or access issues
+
+**Solutions**:
+- Ensure the MCP client has permission to execute the command
+- Check file permissions on the futu-mcp directory
+- On macOS/Linux, verify the script is executable
+
+### MCP Client Not Finding Server
+
+**Error**: `MCP server "futu" not found`
+
+**Solutions**:
+- Verify `cwd` path is correct and absolute
+- Check that `futu-mcp-server` is installed: `uv run futu-mcp-server --help`
+- Try running the command manually in terminal
+- Check MCP client logs for detailed error messages
+
+## Multiple Accounts
+
+To configure multiple Futu accounts, use different MCP server instances:
+
+```json
+{
+  "mcpServers": {
+    "futu-account1": {
+      "command": "uv",
+      "args": ["run", "futu-mcp-server"],
+      "cwd": "/path/to/futu-mcp",
+      "env": {
+        "FUTU_PORT": "11111"
+      }
+    },
+    "futu-account2": {
+      "command": "uv",
+      "args": ["run", "futu-mcp-server"],
+      "cwd": "/path/to/futu-mcp",
+      "env": {
+        "FUTU_PORT": "11112"
+      }
+    }
+  }
+}
 ```
 
-### Can't connect to FutuOpenD from Docker
-
-**Error**: Connection refused to FutuOpenD
-
-**Solution**: 
-1. Ensure FutuOpenD is running on host
-2. Use host networking mode in docker-compose.yml
-3. Or use `host.docker.internal` as FUTU_HOST with bridge networking
-
-### Health check fails
-
-**Error**: Health check endpoint returns 404
-
-**Solution**: Ensure server is running in HTTP mode (`--http` flag or `SERVER_MODE=http`)
-
-### Antigravity can't connect
-
-**Error**: Connection timeout or refused
-
-**Solution**:
-1. Verify server is running: `curl http://localhost:8000/health`
-2. Check firewall settings
-3. Ensure correct URL in Antigravity config
-4. Check server logs: `docker logs futu-mcp-server`
+Run multiple FutuOpenD instances on different ports.
 
 ## Security Considerations
 
-### Authentication
+1. **Trading Password**: Never commit `.env` files with trading passwords to version control
+2. **Network Security**: When using remote FutuOpenD, ensure secure network connection
+3. **File Permissions**: Restrict access to configuration files containing sensitive data
+4. **Environment Variables**: Use environment variables instead of hardcoding credentials
 
-The current implementation does not include authentication. For production:
+## Support
 
-1. **Add API Key Authentication**: Implement middleware to validate API keys
-2. **Use Reverse Proxy**: Let nginx/Apache handle authentication
-3. **Network Isolation**: Use VPN or private network
-
-### SSL/TLS
-
-For production deployments:
-- Use HTTPS (reverse proxy with SSL/TLS)
-- Use valid SSL certificates (Let's Encrypt)
-- Disable HTTP access
-
-### Firewall
-
-- Restrict access to port 8000
-- Only allow connections from trusted IPs
-- Use Docker network isolation
-
-## Monitoring
-
-### Health Checks
-
-```bash
-# Simple health check
-curl http://localhost:8000/health
-
-# Continuous monitoring
-watch -n 5 'curl -s http://localhost:8000/health | jq'
-```
-
-### Logs
-
-```bash
-# Docker logs
-docker logs -f futu-mcp-server
-
-# Local deployment logs
-# Logs are output to stdout
-```
-
-## Backup and Recovery
-
-### Configuration Backup
-
-```bash
-# Backup .env file
-cp .env .env.backup
-
-# Backup docker-compose.yml
-cp docker-compose.yml docker-compose.yml.backup
-```
-
-### Rollback to stdio Mode
-
-If issues occur, you can always rollback to stdio mode:
-
-```bash
-# Stop Docker container
-docker-compose down
-
-# Run in stdio mode
-uv run futu-mcp-server
-```
-
-## Performance Tuning
-
-### Uvicorn Workers
-
-For high-traffic deployments, use multiple workers:
-
-```python
-# In server.py, modify uvicorn.run():
-uvicorn.run(
-    create_app(),
-    host=config.server_host,
-    port=config.server_port,
-    workers=4,  # Add multiple workers
-    log_level=config.log_level.lower()
-)
-```
-
-### Docker Resources
-
-Limit Docker container resources:
-
-```yaml
-# In docker-compose.yml
-services:
-  futu-mcp:
-    # ... other config ...
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
-        reservations:
-          cpus: '1'
-          memory: 512M
-```
-
-## Next Steps
-
-1. Test the deployment with sample queries
-2. Monitor performance and logs
-3. Set up automated backups
-4. Implement authentication for production
-5. Configure SSL/TLS with reverse proxy
+For deployment issues:
+- Check main [README.md](README.md) for detailed documentation
+- Verify FutuOpenD is properly installed and running
+- Review MCP client logs for error messages
+- Test connection manually: `uv run futu-mcp-server` in terminal

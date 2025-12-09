@@ -113,7 +113,7 @@ FUTU_MAX_SUBSCRIPTION_QUOTA=500
 
 ### Running the MCP Server
 
-#### Stdio Mode (Default - for local MCP clients)
+The server runs in stdio mode (standard input/output), which is the standard way MCP servers communicate with clients.
 
 ```bash
 # Using uv
@@ -123,19 +123,7 @@ uv run futu-mcp-server
 python -m futu_mcp.server
 ```
 
-#### HTTP Mode (for Antigravity and remote access)
-
-```bash
-# Using command line flag
-uv run futu-mcp-server --http
-
-# Or set environment variable
-SERVER_MODE=http uv run futu-mcp-server
-```
-
-The HTTP server will start on `http://0.0.0.0:8000` with:
-- **Health check endpoint**: `http://localhost:8000/health`
-- **MCP endpoint**: `http://localhost:8000/mcp`
+The server will start and wait for MCP requests via stdio. It's typically launched by MCP clients (Cursor, Claude Desktop, etc.) automatically.
 
 ### Docker Deployment
 
@@ -169,11 +157,11 @@ docker run -d \
   -e FUTU_PORT=11111 \
   futu-mcp:latest
 
-# Check health
-curl http://localhost:8000/health
+# View logs
+docker logs futu-mcp-server
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment guides including production setup with HTTPS.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment guides.
 
 
 ### MCP Client Configuration
@@ -226,21 +214,19 @@ Add to your Antigravity `mcp_config.json`:
 {
   "mcpServers": {
     "futu": {
-      "url": "http://localhost:8000/mcp",
-      "transport": "http"
+      "command": "uv",
+      "args": ["run", "futu-mcp-server"],
+      "cwd": "/path/to/futu-mcp",
+      "env": {
+        "FUTU_HOST": "127.0.0.1",
+        "FUTU_PORT": "11111"
+      }
     }
   }
 }
 ```
 
-**Note**: The server must be running in HTTP mode for Antigravity. Start it with:
-```bash
-uv run futu-mcp-server --http
-# or
-docker-compose up -d
-```
-
-See [antigravity-config.json](antigravity-config.json) for the complete example configuration.
+See [mcp-config-examples/antigravity-config.json](mcp-config-examples/antigravity-config.json) for the complete example configuration.
 
 
 ## Example Queries

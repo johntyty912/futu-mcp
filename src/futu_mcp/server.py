@@ -510,43 +510,22 @@ def get_static_info(stock_codes: list[str]) -> Dict[str, Any]:
 
 # Main entry point
 def main():
-    """Run the Futu MCP server.
+    """Run the Futu MCP server in stdio mode.
     
-    Supports two modes:
-    - stdio mode (default): For local MCP clients like Cursor and Claude Desktop
-    - HTTP mode: For remote access and Antigravity integration
+    The server communicates via standard input/output, which is the standard
+    way MCP servers interact with clients like Cursor and Claude Desktop.
     
     Usage:
-        # Run in stdio mode (default)
         python -m futu_mcp.server
-        
-        # Run in HTTP mode
-        python -m futu_mcp.server --http
+        # or
+        futu-mcp-server
     """
-    import sys
-    
-    logger.info("Starting Futu MCP Server...")
+    logger.info("Starting Futu MCP Server (stdio mode)...")
     logger.info(f"FutuOpenD connection: {config.host}:{config.port}")
+    logger.info("Server running in stdio mode - ready to accept MCP requests")
     
-    # Check if HTTP mode is requested via command line or config
-    http_mode = "--http" in sys.argv or config.server_mode.lower() == "http"
-    
-    if http_mode:
-        logger.info(f"Running in HTTP mode on {config.server_host}:{config.server_port}")
-        logger.info(f"MCP endpoint: http://{config.server_host}:{config.server_port}/mcp")
-        
-        # Run FastMCP's HTTP app with uvicorn
-        import uvicorn
-        uvicorn.run(
-            mcp.streamable_http_app(),
-            host=config.server_host,
-            port=config.server_port,
-            log_level=config.log_level.lower()
-        )
-    else:
-        logger.info("Running in stdio mode")
-        logger.info("Use --http flag or set SERVER_MODE=http for HTTP mode")
-        mcp.run()
+    # Run FastMCP server in stdio mode
+    mcp.run()
 
 
 if __name__ == "__main__":

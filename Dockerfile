@@ -40,17 +40,10 @@ USER futu
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     FUTU_HOST=host.docker.internal \
-    FUTU_PORT=11111 \
-    SERVER_MODE=http \
-    SERVER_HOST=0.0.0.0 \
-    SERVER_PORT=8000
+    FUTU_PORT=11111
 
-# Expose port
-EXPOSE 8000
+# Note: stdio mode doesn't expose ports or use health checks
+# The server communicates via stdin/stdout with MCP clients
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
-
-# Run the server in HTTP mode
-CMD ["python", "-m", "futu_mcp.server", "--http"]
+# Run the server in stdio mode
+CMD ["python", "-m", "futu_mcp.server"]
