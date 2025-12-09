@@ -341,11 +341,16 @@ def get_max_trd_qtys(
         stock_code: Stock code
         order_type: Order type
         trd_side: Trading side (BUY or SELL)
-        price: Order price, optional
+        price: Order price (required for limit orders, optional for MARKET orders - will attempt to fetch current price)
         trd_env: Trading environment (REAL or SIMULATE, default SIMULATE)
         
     Returns:
         Dictionary with max tradable quantities and buying power
+        
+    Note:
+        - For MARKET orders, if price is not provided, the tool will attempt to fetch the current market price automatically
+        - For limit orders (NORMAL, STOP_LIMIT, etc.), price is required
+        - The Futu API requires price > 0 for all order types
     """
     with futu_client:
         return trading.get_max_trd_qtys(futu_client, {

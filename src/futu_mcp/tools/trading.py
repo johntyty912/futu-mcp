@@ -3,7 +3,7 @@
 import logging
 from typing import Dict, Any
 import pandas as pd
-from futu import TrdEnv, ModifyOrderOp
+from futu import TrdEnv, ModifyOrderOp, RET_OK
 from ..futu_client import FutuClient
 from ..models import (
     PlaceOrderInput,
@@ -355,11 +355,59 @@ def get_max_trd_qtys(client: FutuClient, params: Dict[str, Any]) -> Dict[str, An
     trd_env = TrdEnv.REAL if input_data.trd_env == "REAL" else TrdEnv.SIMULATE
     order_type = client.convert_order_type(input_data.order_type)
     
+    # Handle price parameter: API requires price > 0
+    price = input_data.price
+    
+    # If price is not provided, try to fetch current market price for market orders
+    if price is None:
+        if input_data.order_type == "MARKET":
+            # For market orders, fetch current price from market snapshot
+            try:
+                client.ensure_connected()
+                # Subscribe and get market snapshot to get current price
+                ret, data = client.quote_ctx.subscribe([input_data.stock_code], ['QUOTE'])
+                if ret == RET_OK:
+                    ret, data = client.quote_ctx.get_market_snapshot([input_data.stock_code])
+                    if ret == RET_OK and isinstance(data, pd.DataFrame) and not data.empty:
+                        # Use last_price or cur_price if available
+                        if 'last_price' in data.columns:
+                            price = float(data['last_price'].iloc[0])
+                        elif 'cur_price' in data.columns:
+                            price = float(data['cur_price'].iloc[0])
+                        elif 'price' in data.columns:
+                            price = float(data['price'].iloc[0])
+                        
+                        # Validate fetched price is valid
+                        if price is not None and price > 0:
+                            logger.info(f"Fetched current price {price} for {input_data.stock_code} (market order)")
+                        else:
+                            price = None  # Reset if invalid
+            except Exception as e:
+                logger.warning(f"Failed to fetch current price for market order: {e}")
+        
+        # If still no price, raise error with helpful message
+        if price is None or price <= 0:
+            if input_data.order_type == "MARKET":
+                raise ValueError(
+                    f"Price parameter is required for get_max_trd_qtys. "
+                    f"For MARKET orders, provide a price estimate or the tool will attempt to fetch current price. "
+                    f"Failed to fetch current price automatically. Please provide price parameter."
+                )
+            else:
+                raise ValueError(
+                    f"Price parameter is required for {input_data.order_type} orders. "
+                    f"Please provide a price when calling get_max_trd_qtys."
+                )
+    
+    # Validate price > 0
+    if price <= 0:
+        raise ValueError(f"Price must be greater than 0, got {price}")
+    
     # Get max tradable quantities - note: no trd_side parameter
     ret, data = client.trade_ctx.acctradinginfo_query(
         order_type=order_type,
         code=input_data.stock_code,
-        price=input_data.price or 0,
+        price=price,
         trd_env=trd_env
     )
     result = client.check_response(ret, data, "Failed to get max tradable quantities")
