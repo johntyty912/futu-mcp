@@ -103,12 +103,22 @@ def set_price_reminder(client: FutuClient, params: Dict[str, Any]) -> Dict[str, 
     operation = op_mapping.get(input_data.operation)
     
     # Convert reminder frequency
+    # Build mapping dynamically to handle cases where DAILY might not exist in older Futu API versions
     freq_mapping = {
         "ALWAYS": PriceReminderFreq.ALWAYS,
         "ONCE": PriceReminderFreq.ONCE,
-        "DAILY": PriceReminderFreq.DAILY,
     }
-    reminder_freq = freq_mapping.get(input_data.reminder_freq or "ALWAYS", PriceReminderFreq.ALWAYS)
+    # Only add DAILY if it exists in the enum
+    if hasattr(PriceReminderFreq, "DAILY"):
+        freq_mapping["DAILY"] = PriceReminderFreq.DAILY
+    
+    reminder_freq_str = input_data.reminder_freq or "ALWAYS"
+    reminder_freq = freq_mapping.get(reminder_freq_str)
+    
+    # If the requested frequency doesn't exist (e.g., DAILY in older versions), fall back to ALWAYS
+    if reminder_freq is None:
+        logger.warning(f"Reminder frequency '{reminder_freq_str}' not available, falling back to ALWAYS")
+        reminder_freq = PriceReminderFreq.ALWAYS
     
     # Convert reminder type if provided
     reminder_type_enum = None
