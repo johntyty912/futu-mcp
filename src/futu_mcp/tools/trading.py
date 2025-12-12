@@ -265,12 +265,13 @@ def get_deal_list(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     client.ensure_trade_connected()
     
     trd_env = TrdEnv.REAL if input_data.trd_env == "REAL" else TrdEnv.SIMULATE
-    trd_market = client.convert_trd_market(input_data.trd_market)
     
     # Get deal list
+    # Note: deal_list_query does not accept trd_market parameter.
+    # Market filtering is done when creating OpenSecTradeContext via filter_trdmarket.
+    # If market filtering is needed, it should be set when creating the trade context.
     ret, data = client.trade_ctx.deal_list_query(
-        trd_env=trd_env,
-        trd_market=trd_market
+        trd_env=trd_env
     )
     result = client.check_response(ret, data, "Failed to get deal list")
     

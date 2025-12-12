@@ -3,7 +3,7 @@
 import logging
 from typing import Dict, Any
 import pandas as pd
-from futu import SetPriceReminderOp, UserSecurityGroupType, RET_OK
+from futu import SetPriceReminderOp, UserSecurityGroupType, RET_OK, PriceReminderFreq, PriceReminderType
 from ..futu_client import FutuClient
 from ..models import WatchlistInput, PriceReminderInput
 
@@ -102,12 +102,33 @@ def set_price_reminder(client: FutuClient, params: Dict[str, Any]) -> Dict[str, 
     }
     operation = op_mapping.get(input_data.operation)
     
+    # Convert reminder frequency
+    freq_mapping = {
+        "ALWAYS": PriceReminderFreq.ALWAYS,
+        "ONCE": PriceReminderFreq.ONCE,
+        "DAILY": PriceReminderFreq.DAILY,
+    }
+    reminder_freq = freq_mapping.get(input_data.reminder_freq or "ALWAYS", PriceReminderFreq.ALWAYS)
+    
+    # Convert reminder type if provided
+    reminder_type_enum = None
+    if input_data.reminder_type:
+        # Map string reminder types to enum values
+        # Common types: PRICE_UP, PRICE_DOWN, ASK_PRICE_DOWN, BID_PRICE_UP, etc.
+        try:
+            # Try to get enum value by name (e.g., "PRICE_UP" -> PriceReminderType.PRICE_UP)
+            reminder_type_enum = getattr(PriceReminderType, input_data.reminder_type.upper())
+        except (AttributeError, TypeError):
+            # If not found as enum, use as-is (API may accept string or it might already be an enum)
+            reminder_type_enum = input_data.reminder_type
+            logger.warning(f"Reminder type '{input_data.reminder_type}' not found as enum, using as-is")
+    
     # Set price reminder
     ret, data = client.quote_ctx.set_price_reminder(
         code=input_data.stock_code,
         op=operation,
-        reminder_type=input_data.reminder_type,
-        reminder_freq=input_data.reminder_value,
+        reminder_type=reminder_type_enum,
+        reminder_freq=reminder_freq,
         value=input_data.reminder_value or 0,
         note=input_data.note
     )

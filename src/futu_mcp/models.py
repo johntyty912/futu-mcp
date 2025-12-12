@@ -177,7 +177,8 @@ class PriceReminderInput(BaseModel):
     """Input model for set_price_reminder."""
     stock_code: str = Field(..., description="Stock code")
     operation: Literal["ADD", "DEL", "ENABLE", "DISABLE", "MODIFY", "DEL_ALL"] = Field(..., description="Operation type")
-    reminder_type: Optional[str] = Field(None, description="Reminder type (e.g., PRICE_UP, PRICE_DOWN)")
+    reminder_type: Optional[str] = Field(None, description="Reminder type (e.g., PRICE_UP, PRICE_DOWN, ASK_PRICE_DOWN, BID_PRICE_UP)")
+    reminder_freq: Optional[str] = Field(default="ALWAYS", description="Reminder frequency: ALWAYS (triggers on every event), ONCE (single trigger), DAILY (once per day)")
     reminder_value: Optional[float] = Field(None, description="Reminder threshold value")
     note: Optional[str] = Field(None, description="Reminder note (max 64 bytes)")
 

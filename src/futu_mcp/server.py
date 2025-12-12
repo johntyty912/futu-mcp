@@ -449,6 +449,7 @@ def set_price_reminder(
     stock_code: str,
     operation: str,
     reminder_type: str = None,
+    reminder_freq: str = "ALWAYS",
     reminder_value: float = None,
     note: str = None
 ) -> Dict[str, Any]:
@@ -457,7 +458,8 @@ def set_price_reminder(
     Args:
         stock_code: Stock code
         operation: Operation type (ADD, DEL, ENABLE, DISABLE, MODIFY, DEL_ALL)
-        reminder_type: Reminder type (PRICE_UP, PRICE_DOWN, etc.), required for ADD/MODIFY
+        reminder_type: Reminder type (PRICE_UP, PRICE_DOWN, ASK_PRICE_DOWN, BID_PRICE_UP, etc.), required for ADD/MODIFY
+        reminder_freq: Reminder frequency - ALWAYS (triggers on every event), ONCE (single trigger), DAILY (once per day). Default: ALWAYS
         reminder_value: Threshold value, required for ADD/MODIFY
         note: Reminder note (max 64 bytes), optional
         
@@ -469,6 +471,7 @@ def set_price_reminder(
             "stock_code": stock_code,
             "operation": operation,
             "reminder_type": reminder_type,
+            "reminder_freq": reminder_freq,
             "reminder_value": reminder_value,
             "note": note
         })
