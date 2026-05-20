@@ -35,6 +35,18 @@ class OrderType(str, Enum):
     TRAILING_STOP_LIMIT = "TRAILING_STOP_LIMIT"  # Trailing stop limit order
 
 
+class TimeInForce(str, Enum):
+    """Order time-in-force enumeration."""
+    DAY = "DAY"  # Valid for the trading day only
+    GTC = "GTC"  # Good-till-cancelled
+
+
+class TrailType(str, Enum):
+    """Trailing type for trailing stop orders."""
+    RATIO = "RATIO"  # Trail by percentage
+    AMOUNT = "AMOUNT"  # Trail by absolute amount
+
+
 class KLType(str, Enum):
     """K-line (candlestick) type enumeration."""
     K_1M = "K_1M"  # 1 minute
@@ -103,6 +115,11 @@ class PlaceOrderInput(BaseModel):
     trd_env: Literal["REAL", "SIMULATE"] = Field(default="SIMULATE", description="Trading environment")
     trd_market: Optional[TrdMarket] = Field(None, description="Trading market")
     remark: Optional[str] = Field(None, description="Order remark (max 64 bytes)")
+    time_in_force: TimeInForce = Field(default=TimeInForce.DAY, description="Order validity: DAY or GTC")
+    aux_price: Optional[float] = Field(None, description="Trigger price for STOP/STOP_LIMIT/MARKET_IF_TOUCHED/LIMIT_IF_TOUCHED orders")
+    trail_type: Optional[TrailType] = Field(None, description="Trailing type (RATIO or AMOUNT) for trailing stop orders")
+    trail_value: Optional[float] = Field(None, description="Trailing value (percent if RATIO, price amount if AMOUNT) for trailing stop orders")
+    trail_spread: Optional[float] = Field(None, description="Spread between trigger and limit price for TRAILING_STOP_LIMIT orders")
 
 
 class ModifyOrderInput(BaseModel):

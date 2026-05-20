@@ -13,9 +13,11 @@ from futu import (
     OrderType as FutuOrderType,
     KLType as FutuKLType,
     AuType as FutuAuType,
+    TimeInForce as FutuTimeInForce,
+    TrailType as FutuTrailType,
 )
 from .config import FutuConfig
-from .models import TrdMarket, TrdSide, OrderType, KLType, AuType
+from .models import TrdMarket, TrdSide, OrderType, KLType, AuType, TimeInForce, TrailType
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +186,26 @@ class FutuClient:
             OrderType.TRAILING_STOP_LIMIT: FutuOrderType.TRAILING_STOP_LIMIT,
         }
         return mapping.get(order_type)
+
+    @staticmethod
+    def convert_time_in_force(time_in_force: TimeInForce) -> Any:
+        """Convert TimeInForce enum to Futu TimeInForce."""
+        mapping = {
+            TimeInForce.DAY: FutuTimeInForce.DAY,
+            TimeInForce.GTC: FutuTimeInForce.GTC,
+        }
+        return mapping.get(time_in_force)
+
+    @staticmethod
+    def convert_trail_type(trail_type: Optional[TrailType]) -> Optional[Any]:
+        """Convert TrailType enum to Futu TrailType."""
+        if trail_type is None:
+            return None
+        mapping = {
+            TrailType.RATIO: FutuTrailType.RATIO,
+            TrailType.AMOUNT: FutuTrailType.AMOUNT,
+        }
+        return mapping.get(trail_type)
 
     @staticmethod
     def convert_kl_type(kl_type: KLType) -> Any:

@@ -166,20 +166,31 @@ def place_order(
     price: float = None,
     trd_env: str = "SIMULATE",
     trd_market: str = None,
-    remark: str = None
+    remark: str = None,
+    time_in_force: str = "DAY",
+    aux_price: float = None,
+    trail_type: str = None,
+    trail_value: float = None,
+    trail_spread: float = None
 ) -> Dict[str, Any]:
     """Place a trading order with full validation and safeguards.
-    
+
     Args:
         stock_code: Stock code to trade
         trd_side: Trading side (BUY or SELL)
-        order_type: Order type (NORMAL, MARKET, STOP, STOP_LIMIT, etc.)
+        order_type: Order type (NORMAL, MARKET, STOP, STOP_LIMIT, MARKET_IF_TOUCHED,
+            LIMIT_IF_TOUCHED, TRAILING_STOP, TRAILING_STOP_LIMIT, etc.)
         qty: Order quantity
-        price: Order price (required for limit orders)
+        price: Order price / limit price (required for NORMAL, STOP_LIMIT, LIMIT_IF_TOUCHED)
         trd_env: Trading environment (REAL or SIMULATE, default SIMULATE)
         trd_market: Trading market (HK, US, CN, etc.), optional
         remark: Order remark (max 64 bytes), optional
-        
+        time_in_force: Order validity, DAY or GTC (default DAY)
+        aux_price: Trigger price; required for STOP, STOP_LIMIT, MARKET_IF_TOUCHED, LIMIT_IF_TOUCHED
+        trail_type: Trailing type, RATIO or AMOUNT; required for TRAILING_STOP / TRAILING_STOP_LIMIT
+        trail_value: Trailing value (percent if RATIO, price amount if AMOUNT); required for trailing stops
+        trail_spread: Spread between trigger and limit price for TRAILING_STOP_LIMIT, optional
+
     Returns:
         Dictionary with order placement result including order ID
     """
@@ -192,7 +203,12 @@ def place_order(
             "price": price,
             "trd_env": trd_env,
             "trd_market": trd_market,
-            "remark": remark
+            "remark": remark,
+            "time_in_force": time_in_force,
+            "aux_price": aux_price,
+            "trail_type": trail_type,
+            "trail_value": trail_value,
+            "trail_spread": trail_spread
         })
 
 

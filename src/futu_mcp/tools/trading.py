@@ -38,11 +38,21 @@ def place_order(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
     trd_side = client.convert_trd_side(input_data.trd_side)
     order_type = client.convert_order_type(input_data.order_type)
     trd_env = TrdEnv.REAL if input_data.trd_env == "REAL" else TrdEnv.SIMULATE
-    
-    # Validate price for limit orders
+
+    # Validate price for limit orders (the limit leg)
     if input_data.order_type in ["NORMAL", "STOP_LIMIT", "LIMIT_IF_TOUCHED"] and input_data.price is None:
         raise ValueError(f"{input_data.order_type} orders require a price")
-    
+
+    # Validate trigger price for conditional (touched/stop) orders
+    if input_data.order_type in ["STOP", "STOP_LIMIT", "MARKET_IF_TOUCHED", "LIMIT_IF_TOUCHED"] and input_data.aux_price is None:
+        raise ValueError(f"{input_data.order_type} orders require an aux_price (the trigger price)")
+
+    # Validate trailing parameters for trailing stop orders
+    if input_data.order_type in ["TRAILING_STOP", "TRAILING_STOP_LIMIT"] and (
+        input_data.trail_type is None or input_data.trail_value is None
+    ):
+        raise ValueError(f"{input_data.order_type} orders require trail_type and trail_value")
+
     # Prepare order parameters
     order_params = {
         "price": input_data.price or 0,
@@ -51,15 +61,28 @@ def place_order(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
         "trd_side": trd_side,
         "order_type": order_type,
         "trd_env": trd_env,
+        "time_in_force": client.convert_time_in_force(input_data.time_in_force),
     }
-    
+
     # Only add trd_market if provided
     if input_data.trd_market is not None:
         order_params["trd_market"] = client.convert_trd_market(input_data.trd_market)
-    
+
     # Add remark if provided
     if input_data.remark:
         order_params["remark"] = input_data.remark
+
+    # Trigger price for conditional orders (STOP/STOP_LIMIT/MARKET_IF_TOUCHED/LIMIT_IF_TOUCHED)
+    if input_data.aux_price is not None:
+        order_params["aux_price"] = input_data.aux_price
+
+    # Trailing parameters for trailing stop orders
+    if input_data.trail_type is not None:
+        order_params["trail_type"] = client.convert_trail_type(input_data.trail_type)
+    if input_data.trail_value is not None:
+        order_params["trail_value"] = input_data.trail_value
+    if input_data.trail_spread is not None:
+        order_params["trail_spread"] = input_data.trail_spread
     
     # Place order
     ret, data = client.trade_ctx.place_order(**order_params)
