@@ -171,7 +171,9 @@ def place_order(
     aux_price: float = None,
     trail_type: str = None,
     trail_value: float = None,
-    trail_spread: float = None
+    trail_spread: float = None,
+    fill_outside_rth: bool = False,
+    session: str = "RTH"
 ) -> Dict[str, Any]:
     """Place a trading order with full validation and safeguards.
 
@@ -190,6 +192,8 @@ def place_order(
         trail_type: Trailing type, RATIO or AMOUNT; required for TRAILING_STOP / TRAILING_STOP_LIMIT
         trail_value: Trailing value (percent if RATIO, price amount if AMOUNT); required for trailing stops
         trail_spread: Spread between trigger and limit price for TRAILING_STOP_LIMIT, optional
+        fill_outside_rth: Allow fills outside regular trading hours (US pre/post-market). Default False = RTH only.
+        session: Trading session — RTH (default), ETH (pre-market + after-hours), OVERNIGHT, or ALL. Use ETH or ALL for pre-market orders.
 
     Returns:
         Dictionary with order placement result including order ID
@@ -208,7 +212,9 @@ def place_order(
             "aux_price": aux_price,
             "trail_type": trail_type,
             "trail_value": trail_value,
-            "trail_spread": trail_spread
+            "trail_spread": trail_spread,
+            "fill_outside_rth": fill_outside_rth,
+            "session": session
         })
 
 

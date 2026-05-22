@@ -15,9 +15,10 @@ from futu import (
     AuType as FutuAuType,
     TimeInForce as FutuTimeInForce,
     TrailType as FutuTrailType,
+    Session as FutuSession,
 )
 from .config import FutuConfig
-from .models import TrdMarket, TrdSide, OrderType, KLType, AuType, TimeInForce, TrailType
+from .models import TrdMarket, TrdSide, OrderType, KLType, AuType, TimeInForce, TrailType, SessionType
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +207,17 @@ class FutuClient:
             TrailType.AMOUNT: FutuTrailType.AMOUNT,
         }
         return mapping.get(trail_type)
+
+    @staticmethod
+    def convert_session(session: SessionType) -> Any:
+        """Convert SessionType enum to Futu Session."""
+        mapping = {
+            SessionType.RTH: FutuSession.RTH,
+            SessionType.ETH: FutuSession.ETH,
+            SessionType.OVERNIGHT: FutuSession.OVERNIGHT,
+            SessionType.ALL: FutuSession.ALL,
+        }
+        return mapping.get(session, FutuSession.RTH)
 
     @staticmethod
     def convert_kl_type(kl_type: KLType) -> Any:

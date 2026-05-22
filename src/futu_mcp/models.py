@@ -47,6 +47,14 @@ class TrailType(str, Enum):
     AMOUNT = "AMOUNT"  # Trail by absolute amount
 
 
+class SessionType(str, Enum):
+    """Trading session for US orders (controls extended-hours eligibility)."""
+    RTH = "RTH"  # Regular trading hours only
+    ETH = "ETH"  # Extended hours: pre-market + after-hours
+    OVERNIGHT = "OVERNIGHT"  # Overnight session
+    ALL = "ALL"  # All sessions
+
+
 class KLType(str, Enum):
     """K-line (candlestick) type enumeration."""
     K_1M = "K_1M"  # 1 minute
@@ -120,6 +128,8 @@ class PlaceOrderInput(BaseModel):
     trail_type: Optional[TrailType] = Field(None, description="Trailing type (RATIO or AMOUNT) for trailing stop orders")
     trail_value: Optional[float] = Field(None, description="Trailing value (percent if RATIO, price amount if AMOUNT) for trailing stop orders")
     trail_spread: Optional[float] = Field(None, description="Spread between trigger and limit price for TRAILING_STOP_LIMIT orders")
+    fill_outside_rth: bool = Field(default=False, description="Allow fills outside regular trading hours (US pre/post-market). Default False = RTH only.")
+    session: SessionType = Field(default=SessionType.RTH, description="Trading session: RTH (default), ETH (pre/after-market), OVERNIGHT, or ALL. Use ETH for pre-market.")
 
 
 class ModifyOrderInput(BaseModel):

@@ -62,6 +62,8 @@ def place_order(client: FutuClient, params: Dict[str, Any]) -> Dict[str, Any]:
         "order_type": order_type,
         "trd_env": trd_env,
         "time_in_force": client.convert_time_in_force(input_data.time_in_force),
+        "fill_outside_rth": input_data.fill_outside_rth,
+        "session": client.convert_session(input_data.session),
     }
 
     # Only add trd_market if provided

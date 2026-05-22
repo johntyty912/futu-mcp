@@ -5,6 +5,7 @@ import pytest
 from futu import RET_OK
 from futu import TimeInForce as FutuTimeInForce
 from futu import TrailType as FutuTrailType
+from futu import Session as FutuSession
 
 from futu_mcp.config import FutuConfig
 from futu_mcp.futu_client import FutuClient
@@ -90,3 +91,33 @@ def test_trailing_stop_without_trail_params_raises():
     client, _ = make_client()
     with pytest.raises(ValueError, match="trail"):
         trading.place_order(client, base_params(order_type="TRAILING_STOP", price=None))
+
+
+def test_defaults_fill_outside_rth_to_false():
+    client, fake = make_client()
+    trading.place_order(client, base_params())
+    assert fake.place_order_kwargs["fill_outside_rth"] is False
+
+
+def test_forwards_fill_outside_rth_when_true():
+    client, fake = make_client()
+    trading.place_order(client, base_params(fill_outside_rth=True))
+    assert fake.place_order_kwargs["fill_outside_rth"] is True
+
+
+def test_defaults_session_to_rth():
+    client, fake = make_client()
+    trading.place_order(client, base_params())
+    assert fake.place_order_kwargs["session"] == FutuSession.RTH
+
+
+def test_forwards_eth_session():
+    client, fake = make_client()
+    trading.place_order(client, base_params(session="ETH"))
+    assert fake.place_order_kwargs["session"] == FutuSession.ETH
+
+
+def test_forwards_all_session():
+    client, fake = make_client()
+    trading.place_order(client, base_params(session="ALL"))
+    assert fake.place_order_kwargs["session"] == FutuSession.ALL
